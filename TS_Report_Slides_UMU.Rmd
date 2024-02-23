@@ -1,0 +1,280 @@
+---
+title: "Time Series Labb 1"
+subtitle: "Time Series Analysis, Umeå University"
+author: "Artem Shiryaev\\
+Group 8"
+date: "`r Sys.Date()`"
+output: beamer_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Problem Forumlation
+
+- Time Series Forecasting 
+- Investment Decision based on Accuracy of Models
+- Exploration of data
+
+## Data Presentation
+
+- Yahoo Finance
+- Smoothed to Monthly Prices
+
+```{r, echo = F, include = F}
+load("~/University/Education/Mathematics/Avancerade Kurser/VT24 Time Series/Assignments/Labb 1/UMU_Time_Series_VT24/Workspace_labb1.RData")
+
+```
+## Data Presentation
+```{r, echo = F, include = T}
+par(mfrow=c(1,2))
+plot(formated.data[,1],
+     ylab = "Opening Prices of BTC",
+     main = "Original data"
+)
+
+plot(monthly.data,
+     ylab ="Opening Prices of BTC in USD",
+          main = "Smoothed Monthly data")
+
+
+```
+
+
+## Data Presentation
+
+```{r, echo = F, include = T}
+par(mfrow=c(2,2))
+plot(train.data,
+     ylab = "Opening Prices of BTC",
+     xlab = "Years",
+          main = "Split Training data"
+)
+
+plot(test.data,
+     ylab = "Opening Prices of BTC",
+     xlab = "Months in 2023",
+               main = "Split test data"
+)
+
+
+plot(log.train.data,
+     ylab = "log Opening Prices of BTC",
+     xlab = "Years",
+     main = "Log train data"
+)
+
+plot(log.test.data ,
+     ylab = "log Opening Prices of BTC",
+     xlab = "Months in 2023",
+     main = "Log test data"
+)
+```
+
+
+## Statistical Methods Applied
+
+
+- S1 Method
+
+\begin{align}
+X_t &= m_t + s_t + Y_t, \:\: t=1,\dots n,\: \text{ where }, \mathbf{E} [Y_t ] = 0\\
+m_t &= \frac{0.5x_{t-3} + x_{t-2} + x_{t-1} + x_{t} + x_{t+1} + x_{t+2} + 0.5x_{t+3}}{6}\\
+s_t &= w_k - \frac{1}{d} \Sigma_{i}^{d}w_i \: \:\: \: ,i,k = 1,2,\dots d\\
+d_t &= x_t - s_t\\
+&\text{Then re-estimate the means using the de-seasonalized data}\\
+\hat{m}_t &= \frac{0.5d_{t-3} + d_{t-2} + d_{t-1} + d_{t} + d_{t+1} + d_{t+2} + 0.5d_{t+3}}{6}\\
+\hat{Y}_t &= x_t - \hat{m}_t - s_t
+\end{align}
+
+## Statistical Methods Applied
+
+
+- S2 Method
+
+Method S2 consist of elimination of trend and seasonal component by differencing.
+
+The \textbf{lag-d} difference operator $\nabla_d$ is defined as
+
+$$ \nabla_d X_t = X_t - X-{t-d} = (1-\mathcal{B}^d)X_t$$
+Using special property of 
+$$ \mathcal{B} X_t = X_{t-1} $$
+
+$$ \nabla_d X_t = m_t - m_{t-d} + Y_t - Y_{t-d} $$
+
+
+
+
+## Statistical Methods Results: S1
+```{r, echo = F, include = T}
+par(mfrow=c(1,2))
+plot(S1.MA.Results,
+     ylab = "Log BTC/USD",
+     main = "S1 Filtered Time Series")
+plot(S1.MA.Filter,
+     ylab = "Log BTC/USD",
+     main = "Unfiltered Time Series")
+
+```
+
+
+## Statistical Methods Results: S1
+
+Seasonal components:
+
+| Months  |    Jan    |  Feb      |   Mar   |  Apr    |  May      |  June     |   July    |  Aug  |   Sept   |   Oct     |  Nov      |    Dec    |
+|----------|-----------|-----------|-----------|----------|-----------|-----------|-----------|---------|----------|-----------|-----------|-----------|
+| $s_t$    |  -0.34    | -0.33     |   -0.41   | -0.18   | -0.14    | -0.17    | -0.25    | -0.31    | -0.39   | -0.43    | -0.45    | -0.51    | 
+
+
+
+## Statistical Methods Results: S1
+```{r, echo = F, include = T}
+
+par(mfrow=c(1,2))
+plot(Xt.ts.data2,
+     ylab = "Deseasonablized log Price BTC/USD")
+
+plot(S1.DS.Results,
+     ylab = "Filtered Deseasonablized log Price BTC/USD")
+
+
+```
+
+
+## Statistical Methods Results: S1
+```{r, echo = F, include = T}
+par(mfrow=c(1,2))
+plot(Yhat_t,
+     ylab = "Residuals of Time Series")
+plot(Yhat_ACF,
+     ylab = "ACF",
+     main = "ACF of Residuals ")
+
+
+```
+
+
+## Statistical Methods Results: S2
+```{r, echo = F, include = T, fig.cap= "Differenced Method for de-seasonlized and de-trending Time series"}
+par(mfrow=c(1,2))
+
+plot(S2.trend.diffed,
+     ylab = "Residuals",
+     main = "De-season/trended Time Series")
+plot(acf.trend,
+     main = "ACF on Residuals Dataset")
+
+```
+
+## Checking Assumptions
+
+  - Visually checking the sample autocorrelation function
+  
+\begin{align*}
+\text{H}_0 &= \text{The Time Series is iid Noise}\\
+\text{H}_1 &= \text{The Time Series is } \mathbf{\text{NOT}} \text{ iid Noise}
+\end{align*}
+
+  - Protmanteau test
+  
+  - Turning point test
+  
+  - Difference-sign test
+  
+  - Mann-Kendall Rank test
+  
+  - Checking for normality
+    - Histogram
+    - qq plot
+    - Normality test
+      - Shapiro-Wilks test
+      - Shapiro–Francia test
+      
+      
+      
+## Checking Assumptions
+```{r, echo = F, include = T, fig.cap= "ACF for S1 and S2 methods on time series"}
+par(mfrow=c(1,2))
+
+plot(Yhat_ACF,
+     main = "S1 ACF on Residuals Dataset")
+
+plot(acf.trend,
+     main = "S2 ACF on Residuals Dataset")
+
+
+
+```
+
+
+## Checking Assumptions
+```{r, echo = F, include=TRUE, fig.cap= "Q-Q plots for Normality of Residuals of S1 and S2 Method"}
+
+# Normality Plots
+par(mfrow=c(1,2))
+qqnorm(S1.Residuals,
+       main = "S1 Normal Q-Q Plot")
+qqline(S1.Residuals)
+qqnorm(S2.Residuals,
+       main = "S2 Normal Q-Q Plot")
+qqline(S2.Residuals)
+
+```
+
+
+## Checking Assumptions
+```{r, echo = T, include = T}
+# Box-Pierce Version of iid Sequence test
+Box.test(S1.Residuals,type = "Box-Pierce", lag = 1)
+Box.test(S2.Residuals,type = "Box-Pierce", lag = 1)
+
+
+
+
+```
+
+
+
+## Forecast of 2023
+
+```{r, echo= F, include = T, fig.cap="12 Month Forecast of Monthly BTC/USD Prices in 2023 "}
+
+par(mfrow=c(1,2))
+plot(Forecast.Estimate,
+     main = "Forecasted Time Series",
+     ylab = "log Opening Prices of BTC",
+     xlab = "Months in 2023"
+)
+
+plot(temp.data2,
+     main = "Real Data",
+     ylab = "log Opening Prices of BTC",
+     xlab = "Months in 2023"
+)
+
+
+
+```
+
+
+## Conclusion
+
+
+- Poor performance, linear time series model is insufficient or poorly specified for using on this kind of data set
+- Stationary assumption and normality assumption violated 
+- Intuitively the assumption of the model that $s_t = s_{t+d}$ may be too strong
+- Classical decomposition being unsuitable to forecast accurately monthly prices of Bitcoin
+
+$$X_t = m_t + s_t + Y_t, \:\: t=1,\dots n,\: \text{ where }, \mathbf{E} [Y_t ] = 0$$
+
+
+
+
+
+
+## Questions?
+
+
+Thank you for listening.

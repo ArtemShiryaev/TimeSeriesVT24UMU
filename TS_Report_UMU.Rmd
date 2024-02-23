@@ -1,0 +1,820 @@
+---
+title: "Time Series Report"
+author: "Artem Shiryaev"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+subtitle: "Time Series - Umeå University"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+The goal of this assignment is to familiarize us with time series analysis, and present the results of the analysis in a concise and clear manner.
+
+The tasks and answers will be presented below in a systematic fashion, where the question will be posted - followed by the solution. The following material can be accessed from my GitHub repo, forked and ran by yourself using R. Link: \href{https://github.com/ArtemShiryaev}{https://github.com/ArtemShiryaev}
+
+
+
+## Tasks
+
+### Task 1
+Find a time series data that (can) includes a seasonal component, for example, quarterly data, monthly data. Make sure that the series is fairly long, at least 10 years.
+
+### Solution
+
+We know from financial literature that pricing of assets can be strongly dependent on financial performance - likewise are cryptocurrencies heavily dependent on the overall markets performance and typically experience cycles. Thus, we continue by finding downloading daily prices of Bitcoin as our data set of choice from Yahoo Finance.
+
+
+```{r, echo = T, include = T}
+
+# Load time series data, in this case daily Bitcoin prices
+data <- read.csv("~/University/Education/Mathematics/Avancerade Kurser/VT24 Time Series/Assignments/Labb 1/UMU_Time_Series_VT24/BTC-USD.csv")
+
+# Format the dataframe into a time series object
+formated.data <- ts(data = data[,2:7], 
+                    start = c(2014, 288),
+                    frequency = 365
+)
+
+
+```
+
+Here we can see the aforementioned time series in Figure 1.
+
+
+```{r, echo = F, include = T, fig.cap="Daily Opening Prices of Bitcoin"}
+plot(formated.data[,1],
+     ylab = "Opening Prices of BTC"
+)
+```
+
+
+To reduce the complexity of the time series and 'smooth' it, we average the prices of each month in accordance with
+
+$$
+[\text{Monthly Prices}]_i = \Sigma_{i=1}^{30} [\text{Daily Prices}]_{i} \cdot \frac{1}{30} \:\:\:\:, i = 1,2, \dots
+$$
+
+
+```{r, echo = T, include = F}
+
+months <- round(3419/30)
+
+temp.data <- as.matrix(rep(0, (months-2)))
+
+i <- 0
+
+while (i <= (months-2)) {
+ temp.data[i] <- mean(formated.data[(1+30*i):(30+30*i), 1])
+ cat("iteration = ", i <- i + 1, "\n")
+}
+
+monthly.data <- ts(temp.data,
+                   start = c(2014,9),
+                   frequency = 12)
+
+# Remove unneeded variables from Workspace
+rm(i, data,months,temp.data)
+gc()
+```
+
+Plotting the transformed monthly data we can see a smoother time series, with less variation and spikes. Whilst keeping the overall trends.
+
+
+```{r, echo = F, include = T, fig.cap="Monthly Opening Prices of Bitcoin"}
+plot(monthly.data,
+     ylab ="Opening Prices of BTC in USD")
+```
+
+
+### Task 2
+Split the data in \textbf{two parts}, the most recent year, and the previous years. Time series analysis will be applied on the second part, and the last year data will be used as the “correct answer” when forecasting.
+
+
+
+### Solution:
+
+```{r, echo = T, include = T}
+# Selecting the previous year as test data, and remaining as training data.
+train.data <- ts(monthly.data[1:100],
+                    start = c(2014,9),
+                    frequency = 12)
+                    
+test.data <- as.ts(monthly.data[101:112],
+                   start = c(2023,1),
+                    frequency = 12)
+```
+
+
+### Task 3
+Start by plotting the time series and examine the main features of the graphs, i.e., check whether there is a drift, a deterministic trend, a combination of drift and a deterministic trend, a seasonal component, any apparent sharp changes in behavior, any outlying observations,
+
+### Solution
+
+
+Plotting these two time series we see
+
+
+
+```{r , echo=FALSE, fig.cap="Daily Bitcoin Prices Split Data"}
+par(mfrow=c(1,2))
+plot(train.data,
+     ylab = "Opening Prices of BTC",
+     xlab = "Years"
+)
+
+plot(test.data,
+     ylab = "Opening Prices of BTC",
+     xlab = "Months in 2023"
+)
+
+```
+
+
+We can examine from Figure 3, that we indeed have an upwards deterministic trend, seems as if a positive drift can be examined in the second plot. A seasonal component could perhaps be thought of, in addition US regulatory interventions has affected the pricing positively in 2024  - which can be seen in sharp increase in the opening prices. The 2018 'first' exposure to public and the pandemics type has also had a drastic influence on the pricing as can be observed in the change of pricing behavior.
+
+Therefore, we perform an natural logarithmic transformation to reduce the yet still - drastic fluctuations. Judging by the Figure below we see a substantial improvement of the training dataset - reseabling more of a linear times series with drift and various seasonalities.
+
+```{r, echo =T, include = T, fig.cap="Daily Log Prices of Bitcoin"}
+
+log.test.data <- log(test.data, base = exp(1))
+log.train.data <- log(train.data, base = exp(1))
+par(mfrow=c(1,2))
+plot(log.train.data,
+     ylab = "log Opening Prices of BTC",
+     xlab = "Years"
+)
+
+plot(log.test.data ,
+     ylab = "log Opening Prices of BTC",
+     xlab = "Months in 2023"
+)
+
+
+```
+
+
+
+### Task 4
+
+Remove any drift, deterministic trend and seasonal components in order to get stationary residuals. Do that, by both using methods \textbf{S1} and \textbf{S2} (see Chapter 1.5).
+
+
+
+### Solution using S1 method
+
+We have 101 observations and 12 monthly seasons yielding $d = 12 = 2q \Rightarrow q = 6$, thus according to the formula we are to compute for each observation.
+$$m_t = \frac{0.5x_{t-3} + x_{t-2} + x_{t-1} + x_{t} + x_{t+1} + x_{t+2} + 0.5x_{t+3}}{6} $$
+The second step in the S1 process is to subtract the filtered mean
+
+
+```{r, echo = T, include = F}
+
+S1.MA.Filter  <- ts(log.train.data[1:100],
+                       start = c(2015,1),
+                       frequency = 12)
+S1.MA.Results <- ts(log.train.data[5:96],
+                       start = c(2015,1),
+                       frequency = 12)
+# Removing the first 4 observations and last 4 observations from train dataset
+i <- 0
+while (i <= length(S1.MA.Filter)-8){
+    S1.MA.Results[i] <- (1/6 *  sum(0.5*S1.MA.Filter[i]  +
+                                        S1.MA.Filter[i+1]+
+                                        S1.MA.Filter[i+2]+
+                                        S1.MA.Filter[i+3]+
+                                        S1.MA.Filter[i+4]+
+                                        S1.MA.Filter[i+5]+
+                                    0.5*S1.MA.Filter[i+6]))
+    cat("iteration = ", i <- i + 1, "\n")
+}
+```
+
+
+
+
+```{r, echo = F, include = T, fig.cap="Filtered vs. Unfiltered Test Time Series"}
+par(mfrow=c(1,2))
+plot(S1.MA.Results,
+     ylab = "Log BTC/USD",
+     main = "S1 Filtered Time Series")
+plot(S1.MA.Filter,
+     ylab = "Log BTC/USD",
+     main = "Unfiltered Time Series")
+
+```
+
+
+Followed by subtracting each 
+
+```{r, echo = T, include= F}
+
+
+S1.Step2.W <- S1.MA.Results
+i <- 0
+while (i <= length(S1.MA.Results)) {
+  S1.Step2.W[i] <-  (S1.MA.Filter[i+4] - S1.MA.Results[i])
+  cat("iteration = ", i <- i + 1, "\n")
+}
+
+# Summing each column, e.g. each month
+Seasonal.comp <- as.vector(rep(0,12))
+  
+i <- 0
+while (i < 9) {
+  Seasonal.comp[i] <- 1/8*(sum(S1.Step2.W[i]
+                              + S1.Step2.W[i+12]
+                              + S1.Step2.W[i+12*2] 
+                              + S1.Step2.W[i+12*3] 
+                              + S1.Step2.W[i+12*4] 
+                              + S1.Step2.W[i+12*4] 
+                              + S1.Step2.W[i+12*5] 
+                              + S1.Step2.W[i+12*6]))
+  cat("iteration = ", i <- i + 1, "\n")
+    
+}
+i <- 0
+while(i+9 <= 12) {
+      Seasonal.comp[i+9] <- (1/7) *sum (S1.Step2.W[i] + S1.Step2.W[i+12]
+                              + S1.Step2.W[i+12*2] 
+                              + S1.Step2.W[i+12*3] 
+                              + S1.Step2.W[i+12*4] 
+                              + S1.Step2.W[i+12*4] 
+                              + S1.Step2.W[i+12*5])
+        cat("iteration = ", i <- i + 1, "\n")
+}
+
+```
+
+
+$$ s_t = w_k - \frac{1}{d} \Sigma_{i}^{d}w_i \: \:\: \: ,i,k = 1,2,\dots d$$
+```{r, echo = T, include = F}
+Seasonal.Comp.Final<- as.vector(rep(0,12))
+i <- 0
+while (i <= 12) {
+  Seasonal.Comp.Final[i] <- Seasonal.comp[i] - sum(Seasonal.comp[-i])
+    cat("iteration = ", i <- i + 1, "\n")
+}
+
+print(Seasonal.Comp.Final)
+temp.names <- c("Jan","Feb", "March", "April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec")
+names(Seasonal.Comp.Final) <- temp.names
+```
+
+
+We get the following results;
+```{r, echo = F, include = T}
+
+print(Seasonal.Comp.Final)
+```
+We obtain de-seasonalized data by
+
+$$ d_ t = x_t - s_t$$
+The re-estimate the means using the de-seasonalized data
+
+$$\hat{m}_t = \frac{0.5d_{t-3} + d_{t-2} + d_{t-1} + d_{t} + d_{t+1} + d_{t+2} + 0.5d_{t+3}}{6} $$
+Followed by obtaining the residuals using the
+
+$$  {\hat{Y}}_t = x_t - \hat{m}_t- s_t$$
+
+```{r, echo = F, include = F}
+# We begin with de-seasonalizing the data
+
+Xt.ts.data  <- ts(log.train.data[1:100],
+                       start = c(2015,1),
+                       frequency = 12)
+Xt.ts.data2 <- Xt.ts.data
+# Removing the first 4 observations and last 4 observations from train dataset
+
+#1
+i <- 0
+while (i <= 12){
+    Xt.ts.data2[i] <-Seasonal.Comp.Final[i]*Xt.ts.data[i]
+      
+    cat("iteration = ", i <- i + 1, "\n")
+}
+
+#2
+i <- 1 
+
+
+while (i <= 12){
+    Xt.ts.data2[i+12] <- Seasonal.Comp.Final[i]*Xt.ts.data[i+12]
+      
+    cat("iteration = ", i <- i + 1, "\n")
+}
+
+
+#3
+i <- 1 
+
+while (i <= 12){
+    Xt.ts.data2[i+12*2] <- Seasonal.Comp.Final[i]*Xt.ts.data[i+12*2]
+      
+    cat("iteration = ", i <- i + 1, "\n")
+}
+
+#4
+i <- 1 
+
+while (i <= 12){
+    Xt.ts.data2[i+12*3] <- Seasonal.Comp.Final[i]*Xt.ts.data[i+12*3]
+      
+    cat("iteration = ", i <- i + 1, "\n")
+}
+
+
+#5
+i <- 1 
+
+while (i <= 12){
+    Xt.ts.data2[i+12*4] <- Seasonal.Comp.Final[i]*Xt.ts.data[i+12*4]
+      
+    cat("iteration = ", i <- i + 1, "\n")
+}
+
+#6
+i <- 1 
+
+while (i <= 12){
+    Xt.ts.data2[i+12*5] <- Seasonal.Comp.Final[i]*Xt.ts.data[i+12*5]
+      
+    cat("iteration = ", i <- i + 1, "\n")
+}
+
+
+#7
+
+i <- 1 
+
+while (i <= 12){
+    Xt.ts.data2[i+12*6] <- Seasonal.Comp.Final[i]*Xt.ts.data[i+12*6]
+      
+    cat("iteration = ", i <- i + 1, "\n")
+}
+
+
+
+
+#8
+
+i <- 1 
+
+while (i <= 12){
+    Xt.ts.data2[i+12*7] <- Seasonal.Comp.Final[i]*Xt.ts.data[i+12*7]
+      
+    cat("iteration = ", i <- i + 1, "\n")
+}
+
+#9
+
+i <- 1 
+
+while (i <= 4){
+    Xt.ts.data2[i+12*8] <- Seasonal.Comp.Final[i]*Xt.ts.data[i+12*8]
+      
+    cat("iteration = ", i <- i + 1, "\n")
+}
+
+
+```
+
+
+
+```{r, echo = T, include = F}
+
+
+# Proceeding with filtered mean of the deaseasonlized log prices
+S1.DS.Filter  <- ts(Xt.ts.data2[1:100],
+                       start = c(2015,1),
+                       frequency = 12)
+S1.DS.Results <- ts(Xt.ts.data2[5:96],
+                       start = c(2015,1),
+                       frequency = 12)
+
+# Removing the first 4 observations and last 4 observations from train dataset
+i <- 0
+while (i <= length(S1.DS.Filter)-8){
+    S1.DS.Results[i] <- (1/6 *  sum(0.5*S1.DS.Filter[i]  +
+                                        S1.DS.Filter[i+1]+
+                                        S1.DS.Filter[i+2]+
+                                        S1.DS.Filter[i+3]+
+                                        S1.DS.Filter[i+4]+
+                                        S1.DS.Filter[i+5]+
+                                    0.5*S1.DS.Filter[i+6]))
+    cat("iteration = ", i <- i + 1, "\n")
+}
+```
+
+
+
+```{r, echo = F, include = T, fig.cap="Deseasonalized Test Dataset"}
+
+par(mfrow=c(1,2))
+plot(Xt.ts.data2,
+     ylab = "Deseasonablized log Price BTC/USD")
+
+plot(S1.DS.Results,
+     ylab = "Filtered Deseasonablized log Price BTC/USD")
+
+
+```
+
+
+```{r, echo = F, include = F}
+
+Yhat_t <- Xt.ts.data2[5:96]- S1.DS.Results
+Yhat_ACF <- acf(Yhat_t, plot = F, lag.max = 100)
+
+```
+
+
+
+```{r, echo = F, include = T, fig.cap= "Residuals of Test Dataset"}
+par(mfrow=c(1,2))
+plot(Yhat_t,
+     ylab = "Residuals of Time Series")
+plot(Yhat_ACF,
+     ylab = "ACF",
+     main = "ACF of Residuals ")
+
+
+```
+
+Judging from Figure 7, the residuals are spread around 0, however there is clearly a pattern remaining which is also seen from the autocovariance function plot on the right hand side. Where up until lag 6 (e.g. six months) there is a statistical significant impact on the prices.
+
+
+### Solution using S2 Method
+
+Method S2 consist of elimination of trend and seasonal component by differencing.
+
+The \textbf{lag-d} difference operator $\nabla_d$ is defined as
+
+$$ \nabla_d X_t = X_t - X-{t-d} = (1-\mathcal{B}^d)X_t$$
+
+where $\mathcal{B}$ is the backward shit operator defined as
+$$ \mathcal{B}X_t = X_{t-1}$$
+
+
+Applying the classical decomposition model$X_t = m_t + s_t + Y_t$ where 
+$m_t$ is a slowly changing function known as a trend component, $s_t$ is a function
+with known period d referred to as a seasonal component, and $Y_t$ is a random noise
+component that is stationary, if $Y_t$ is iid Gaussian White Noise then $\mathbf{E}[Y_t] = 0$. Applying the difference operator we get a de-seasonalized series with trend compontent $m_t - m_{t-d}$ and residual $Y_t - Y_d$. 
+
+Put mathematically:
+
+$$\nabla_d X_t = m_t - m_{t-d} + Y_t - Y_{t-d} $$
+
+```{r , echo= T, include = T}
+
+# eliminate the seasonal component
+
+log.data <- log(monthly.data, base = exp(1))
+
+# eliminate the seasonal component
+S2.lag12.diffed <- diff(log.data, lag = 12, differences = 1)
+
+
+# eliminate the trend form the deseasonalized series
+S2.trend.diffed <- diff(S2.lag12.diffed,differences = 1)
+
+```
+
+
+
+```{r, echo = F, include =F}
+acf.trend <- acf(S2.trend.diffed,
+                 lag.max = 100)
+```
+
+
+
+```{r, echo = F, include = T, fig.cap= "Differenced Method for de-seasonlized and de-trending Time series"}
+par(mfrow=c(1,2))
+
+plot(S2.trend.diffed,
+     ylab = "Residuals",
+     main = "De-season/trended Time Series")
+plot(acf.trend,
+     main = "ACF on Residuals Dataset")
+
+```
+
+
+
+
+### Task 5
+
+Test if the residuals or the differenced series are iid Noise according to the methods in Chapter 1.6.
+
+
+### Solution 
+
+The available testing methods we will be where we will be reviewing some of them are as follows
+
+  - Visually checking the sample autocorrelation function
+  
+  - Protmanteau test
+  
+  - Turning point test
+  
+  - Difference-sign test
+  
+  - Mann-Kendall Rank test
+  
+  - Checking for normality
+    - Histogram
+    - qq plot
+    - Normality test
+      - Shapiro-Wilks test
+      - Shapiro–Francia test
+      - Jarque–Beratest
+      - Anderson–Darling test
+
+
+We will systematically check all of these methods to see whether or not the time series residuals has a dependence structure or not. The typical hypothesis tests reviews if
+\begin{align*}
+\text{H}_0 &= \text{The Time Series is iid Noise, e.g. no dependence structure among residuals}\\
+\text{H}_1 &= \text{The Time Series is } \mathbf{\text{NOT}} \text{ iid Noise, e.g. there is a possible dependece structure among residuals}
+\end{align*}
+
+#### Sample autocorrelation function
+
+
+Figure 9 present the autocorrelation functions above for S1 and S2 methods yielding slightly different results. However, one might point out to the reader that altought both ACF vary, they both record independent structure at around lag 4-5 mark - which indicate that both methods produce an independent residual structure after lag 6, in our case - after 6 months the opening prices of Bitcoin are independent of each other.
+
+
+```{r, echo = F, include = T, fig.cap= "ACF for S1 and S2 methods on time series"}
+par(mfrow=c(1,2))
+
+plot(Yhat_ACF,
+     main = "S1 ACF on Residuals Dataset")
+
+plot(acf.trend,
+     main = "S2 ACF on Residuals Dataset")
+
+
+
+```
+
+
+
+
+
+#### Protmanteau test 
+
+
+The Portmanteau test continues and builds upon the idea of autorrelation. Let $\hat{\rho} (j)$ denote the sample autocorrelation value of lag $j$. Then if $Y_1 ,Y_2, \dots, Y_n$ is an iid sequence, for large $n$
+$$Q = n \Sigma_{j=1}^{h} \hat{\rho} (j) \:\:\:, j = 1,\dots,h$$
+
+
+$Q$ is approximately distributed as the sum of squares of the independent $\mathcal{N}(0, 1)$ random
+variables, yielding that $\sqrt{n} \hat{\rho} (j)$ for $j=1,\dots,h$ is $\chi^{2}(h)$ distributed with $h$ degrees of freedom.\\
+Ljung and Box refined this test with an better approximation of the $\chi^2$ distribution using
+
+
+$$ Q_{LB} = n(n+2) \Sigma_{j=1}^{h} \frac{\hat{\rho}(j)}{n-j}  \:\:\:, j = 1,\dots,h$$
+
+We shall now test both methods to check for independence
+
+```{r, echo = F, include = F}
+S1.Residuals <- Yhat_t
+S2.Residuals <- S2.trend.diffed
+```
+
+
+```{r, echo = T, include = T}
+# Box-Pierce Version of iid Sequence test
+Box.test(S1.Residuals,type = "Box-Pierce", lag = 1)
+Box.test(S2.Residuals,type = "Box-Pierce", lag = 1)
+
+
+# Ljung-Box Version of iid Sequence test
+Box.test(S1.Residuals,type = "Ljung-Box", lag = 1)
+Box.test(S2.Residuals,type = "Ljung-Box", lag = 1)
+
+```
+
+Both methods reject the null-hypothesis H$_0$ with p-value $< 0.000$ for both residual time series. Implying that these series are not an iid sequence and has a clear dependence structure.
+
+
+#### Turning point test
+
+The method by which the turning point test the residual for an iid sequence is as follows. If $Y_1, \dots Y_n$ is a sequence of observations, then there is a turning point at time $i$ if $Y_{i-1} < Y_i$ and $Y_i > Y_{i+1}$, or alternatively  $Y_{i-1} > Y_i$ and $Y_i < Y_{i+1}$. Then
+
+If  $T$ is the number of turning points of an iid sequence of length $n$, the for large $n$ 
+ $$ T \in \mathcal{N}(\frac{2(n-2)}{3}, \frac{16n - 29}{90})$$
+ 
+Thus, we reject H$_0$ whenever $\frac{|T-\mu_T |}{\sigma_T} > \Phi_{1-\frac{\alpha}{2}}$ where $\Phi_{1-\frac{\alpha}{2}}$  is the 1- $\frac{\alpha}{2}$ quantile of the standard normal distribution $\mathcal{N}(0,1)$.
+
+
+
+```{r, echo = T, include=TRUE}
+library(randtests)
+turning.point.test(S1.Residuals)
+turning.point.test(S2.Residuals)
+
+
+```
+
+
+From the turning point test output, H$_0$ was rejected for method S1, however the test was unable to reject the S2 methods residuals. Implying that they may be an iid sequence
+
+#### Difference-sign test
+
+Let $Y_1, \dots Y_n$ be a sequence of observations, then we count the number $S$ of values $i$ such that $Y_i > Y_{i-1}$.
+
+If $Y_1, \dots Y_n$ is an iid sequence, then for large $n$
+$$ S  \in \mathcal{N} ( \frac{n-1}{2}, \frac{n+1}{12}) $$
+
+Thus, we reject H$_0$ whenever $\frac{|S -\frac{n-1}{2} |}{|\sqrt{\frac{n+1}{12}}|} > \Phi_{1-\frac{\alpha}{2}}$ where $\Phi_{1-\frac{\alpha}{2}}$  is the 1- $\frac{\alpha}{2}$ quantile of the standard normal distribution $\mathcal{N}(0,1)$.
+
+
+Time Series literature argues however that the the difference-sign test must be used with caution. A set of observations exhibiting a cyclic component will pass the difference-sign test for randomness, since roughly half of the observations will be points of increase.
+
+```{r, echo = T, include=TRUE}
+difference.sign.test(S1.Residuals)
+difference.sign.test(S2.Residuals)
+
+```
+  
+Similar to the turning point test output, H$_0$ was rejected for method S1 residuals, however the test was unable to reject the S2 methods residuals. Implying that they may be an iid sequence.
+  
+  
+#### Mann-Kendall Rank test
+
+The rank test is especially useful for detecting a linear trend
+in the data. Define $\mathcal{P}$ to be the number of pairs $(i,j)$ such that $Y_j > Y_i$ and $j>i$, $i = 1, \dots, n-1$
+If $Y_1, \dots Y_n$ is an iid sequence, then for large $n$
+
+$$ \mathcal{P} \in \mathcal{N} (\frac{n(n-1)}{4}, \frac{n(n-1)(2n+5)}{72})$$
+
+We would reject H$_0$ if $\frac{|\mathcal{P} -\frac{n(n-1)}{4} |}{|\sqrt{\frac{n(n-1)(2n+5)}{72}}|} > \Phi_{1-\frac{\alpha}{2}}$ where $\Phi_{1-\frac{\alpha}{2}}$  is the 1- $\frac{\alpha}{2}$ quantile of the standard normal distribution $\mathcal{N}(0,1)$.
+
+```{r, echo = T, include=TRUE}
+rank.test(S1.Residuals)
+rank.test(S2.Residuals)
+
+```
+
+The Mann-Kendall Rank test was unable to reject both H$_0$ for both S1 and S2 methods of the residuals. Implying that both of them may be an iid sequence.
+
+#### Checking for normality
+
+
+In case the series has a normal distribution, we would then be able to infer stronger assumptions and make better predictions.
+
+We begin visually, reviewing the normality assumption of the residuals using quantile plots
+
+```{r, echo = T, include=TRUE, fig.cap= "Q-Q plots for Normality of Residuals of S1 and S2 Method"}
+
+# Normality Plots
+par(mfrow=c(1,2))
+qqnorm(S1.Residuals,
+       main = "S1 Normal Q-Q Plot")
+qqline(S1.Residuals)
+qqnorm(S2.Residuals,
+       main = "S2 Normal Q-Q Plot")
+qqline(S2.Residuals)
+
+```
+
+
+From Figure 10, it seems that the time series may be normally distributed indeed for S2, however it may be a stretch to assume the S1 residuals are normal. We must perform a statistical hypothesis test to evaluate it more carefully and accurately.
+
+
+```{r, echo = F, include=F}
+library(tseries)
+
+```
+
+
+Proceeding with the statistical tests, the Jarque–Bera statistic tests the residuals of the fit for normality based on the observed skewness and kurtosis. Atleast for S1 residuals it appears that the residuals have some
+non-normal skewness and kurtosis to the time series. The Shapiro–Wilk statistic tests the residuals of
+the fit for normality based on the empirical order statistics. Below we see the results of both tests
+
+```{r, echo = TRUE, include=TRUE}
+
+shapiro.test(S1.Residuals)
+shapiro.test(S2.Residuals)
+
+
+jarque.bera.test(S1.Residuals)
+jarque.bera.test(S2.Residuals)
+
+# library(nortest)
+# ad.test(S1.Residuals)
+# ad.test(S2.Residuals)
+# sf.test(S1.Residuals)
+# sf.test(S2.Residuals)
+
+``` 
+
+
+#### Normality and iid sequence Conclusion:
+
+The Residuals are not normal, nor are they independent. Although some visual plots show resemblance of normality and some test are unable to reject H$_0$ e.g. implying the residuals are iid. However, several methods points to the fact that there is a clear dependence structure and many p-values suggest strongly non-normality is present within the time series. 
+
+
+### Task 6
+
+Regardless of the conclusion from 5, use the results from method S1 to forecast the forthcoming year (just using the estimated trend and the estimated seasonal component) and compare it to the “correct answer”.
+
+
+### Solution
+
+
+Proceeding with forecasting the year 2023 using the S1 Method for decomposition from 2014 - 2022, we firstly re-familiarize the reader with the derivations of the S1 Method.
+
+
+\begin{align}
+X_t &= m_t + s_t + Y_t, \:\: t=1,\dots n,\: \text{ where }, \mathbf{E} [Y_t ] = 0\\
+m_t &= \frac{0.5x_{t-3} + x_{t-2} + x_{t-1} + x_{t} + x_{t+1} + x_{t+2} + 0.5x_{t+3}}{6}\\
+s_t &= w_k - \frac{1}{d} \Sigma_{i}^{d}w_i \: \:\: \: ,i,k = 1,2,\dots d\\
+d_t &= x_t - s_t\\
+&\text{Then re-estimate the means using the de-seasonalized data}\\
+\hat{m}_t &= \frac{0.5d_{t-3} + d_{t-2} + d_{t-1} + d_{t} + d_{t+1} + d_{t+2} + 0.5d_{t+3}}{6}\\
+\hat{Y}_t &= x_t - \hat{m}_t - s_t
+\end{align}
+
+In our case, because we assume $\mathbf{E} [Y_t ] = 0$, which due to our non-normality in the residuals as seen above in Task 5 is in fact incorrectly assumed - we will be producing a biased forecasting result. Nevertheless, suppose $\mathbf{E} [Y_t ] = 0$ is true, then we may see from Equation 7 that in order to forecast $x_t$ we simply need to plugin the values for $\hat{m}_t$ and $s_t$, mathematically speaking
+
+$$\hat{x}_{t}^{Forcast} =\hat{m}_t  + s_t$$
+
+Recalling the results from Task 4, our $s_t$ values are
+
+| Months   |    Jan    |  Feb      |   March   |  April    |  May      |  June     |   July    |  Aug  |   Sept   |   Oct     |  Nov      |    Dec    |
+|----------|-----------|-----------|-----------|----------|-----------|-----------|-----------|---------|----------|-----------|-----------|-----------|
+| $s_t$    |  -0.34    | -0.33     |   -0.41   | -0.18   | -0.14    | -0.17    | -0.25    | -0.31    | -0.39   | -0.43    | -0.45    | -0.51    | 
+
+
+
+
+```{r, echo = F, include = F}
+
+
+
+temp.data <- S1.DS.Results[81:92]
+temp.data2 <- S1.DS.Filter[81:92]
+temp.data2 <- as.ts(temp.data2,
+                           frequency = 12,
+                           start = c(2022,9))
+
+Forecast.Estimate <- NULL
+
+Forecast.Estimate[1] <- temp.data[1]*Seasonal.Comp.Final[9]
+Forecast.Estimate[2] <- temp.data[2]*Seasonal.Comp.Final[10]
+Forecast.Estimate[3] <- temp.data[3]*Seasonal.Comp.Final[11]
+Forecast.Estimate[4] <- temp.data[4]*Seasonal.Comp.Final[12]
+Forecast.Estimate[5] <- temp.data[5]*Seasonal.Comp.Final[1]
+Forecast.Estimate[6] <- temp.data[6]*Seasonal.Comp.Final[2]
+Forecast.Estimate[7] <- temp.data[7]*Seasonal.Comp.Final[3]
+Forecast.Estimate[8] <- temp.data[8]*Seasonal.Comp.Final[4]
+Forecast.Estimate[9] <- temp.data[9]*Seasonal.Comp.Final[5]
+Forecast.Estimate[10] <- temp.data[10]*Seasonal.Comp.Final[6]
+Forecast.Estimate[11] <- temp.data[11]*Seasonal.Comp.Final[7]
+Forecast.Estimate[12] <- temp.data[12]*Seasonal.Comp.Final[8]
+
+
+
+Forecast.Estimate <- as.ts(Forecast.Estimate,
+                           frequency = 12,
+                           start = c(2022,9))
+
+```
+
+
+
+
+```{r, echo= F, include = T, fig.cap="12 Month Forecast of Monthly BTC/USD Prices in 2023 "}
+
+par(mfrow=c(1,2))
+plot(Forecast.Estimate,
+     main = "Forecasted Time Series",
+     ylab = "log Opening Prices of BTC",
+     xlab = "Months in 2023"
+)
+
+plot(temp.data2,
+     main = "Real Data",
+     ylab = "log Opening Prices of BTC",
+     xlab = "Months in 2023"
+)
+
+
+
+```
+
+
+The results are presented in the from of Figure 11. The reader may instantly spot both plots in-curing different shapes and trends. However, reviewing the Figure carefully, one may see the magnitude of error that the forecast achieves compared to the real data. The Forecasted line varies around $(0.4 , 1.8)$ whilst the real data varies from $(-5.5 , -1.5)$ on the natural logarithimc scale of the opening prices of Bitcoin in USD.
+
+## General Conclusion
+
+One may thus conclude that such a linear time series model is insufficient or poorly specified for using on this kind of data set. As we saw under Task 5, the stationary assumption was violated as well as the normality assumption. In addition, intuitively the assumption of the model that $s_t = s_{t+d}$ may be too strong - since the concurrency market is highly volatile and adjusting rapidly around regulatory realities as well as other impacts for instance Elon Musks tweets. Resulting in this classical decomposition being unsuitable to forecast accurately monthly prices of Bitcoin.
