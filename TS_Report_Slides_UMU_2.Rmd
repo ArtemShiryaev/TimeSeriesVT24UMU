@@ -335,7 +335,7 @@ MSE | 1261| 1258 | 10.1 | 3.72 |
 ## Conclusion
 
 
-- Poor performance, linear time series model is insufficient or poorly specified for using on this kind of data set
+- Poor performance, time series model is insufficient or poorly specified for using on this kind of data set
 - Stationary assumption and normality assumption violated 
 - Intuitively the assumption of the model that $s_t = s_{t+d}$ may be too strong
 - Poor data handling and processing from my side

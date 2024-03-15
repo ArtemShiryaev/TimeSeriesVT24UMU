@@ -1045,8 +1045,8 @@ We continue with forecasting our test dataset using our fitted third SARIMA mode
 ```{r, echo = F, include = F}
 
 forecast_mod3 <- predict(object = Model_3, newdata = log.test.data, n.ahead = 12, interval = 'confidence')
-UP_CI <- forecast_mod3$pred+2*forecast_mod3$se
-LOW_CI <- forecast_mod3$pred-2*forecast_mod3$se
+UP_CI3 <- forecast_mod3$pred+2*forecast_mod3$se
+LOW_CI3 <- forecast_mod3$pred-2*forecast_mod3$se
 ```
 
 ```{r, echo = F, include = T, fig.cap="Forecast with SARIMA(9,0,1) Model with 95 CI"}
@@ -1058,8 +1058,8 @@ plot(forecast_mod3$pred,
      ylim = c(7,12),
      lwd = 2,
      type = "b")
-lines(UP_CI, col = "red")
-lines(LOW_CI,col = "red")
+lines(UP_CI3, col = "red")
+lines(LOW_CI3,col = "red")
 
 
 
@@ -1102,8 +1102,8 @@ coeftest(Model_4)
 ```{r, echo = F, include = T}
 
 forecast_mod4 <- predict(object = Model_4, newdata = log.test.data, n.ahead = 12, interval = 'confidence')
-UP_CI <- forecast_mod4$pred+2*forecast_mod4$se
-LOW_CI <- forecast_mod4$pred-2*forecast_mod4$se
+UP_CI4 <- forecast_mod4$pred+2*forecast_mod4$se
+LOW_CI4 <- forecast_mod4$pred-2*forecast_mod4$se
 ```
 
 ```{r, echo = F, include = T, fig.cap="Forecast with auto.arima AR(1) Model with 95 CI"}
@@ -1115,8 +1115,8 @@ plot(forecast_mod4$pred,
      ylim = c(7,12),
      lwd = 2,
      type = "b")
-lines(UP_CI, col = "red")
-lines(LOW_CI,col = "red")
+lines(UP_CI4, col = "red")
+lines(LOW_CI4,col = "red")
 
 
 
