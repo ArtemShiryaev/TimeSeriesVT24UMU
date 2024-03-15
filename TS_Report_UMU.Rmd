@@ -709,11 +709,11 @@ shapiro.test(S2.Residuals)
 jarque.bera.test(S1.Residuals)
 jarque.bera.test(S2.Residuals)
 
-# library(nortest)
-# ad.test(S1.Residuals)
-# ad.test(S2.Residuals)
-# sf.test(S1.Residuals)
-# sf.test(S2.Residuals)
+library(nortest)
+ad.test(S1.Residuals)
+ad.test(S2.Residuals)
+sf.test(S1.Residuals)
+sf.test(S2.Residuals)
 
 ``` 
 
@@ -818,3 +818,72 @@ The results are presented in the from of Figure 11. The reader may instantly spo
 ## General Conclusion
 
 One may thus conclude that such a linear time series model is insufficient or poorly specified for using on this kind of data set. As we saw under Task 5, the stationary assumption was violated as well as the normality assumption. In addition, intuitively the assumption of the model that $s_t = s_{t+d}$ may be too strong - since the concurrency market is highly volatile and adjusting rapidly around regulatory realities as well as other impacts for instance Elon Musks tweets. Resulting in this classical decomposition being unsuitable to forecast accurately monthly prices of Bitcoin.
+
+# Labb 2 Solutions
+
+
+
+
+## Task  2
+```{r, echo = T, include = T}
+S1.Method.ts <- as.ts(S1.DS.Results)
+S2.Method.ts <- as.ts(S2.trend.diffed)
+# Calculating the perriodogram
+S1.spc <- spectrum(S1.Method.ts,plot="T")
+S2.spc <- spectrum(S2.Method.ts,plot="T")
+#Extracting the frequencies at which the spectral density is estimated
+S1.spx <- S1.spc$freq
+S2.spx <- S2.spc$freq
+#Extracting the spectral density estimates, scaled by 1/frequency
+S1.spy <- S1.spc$spec
+S2.spy <- S2.spc$spec
+
+
+#Plotting the Spectral density
+par(mfrow=c(1,2))
+plot(S1.spy~S1.spx,xlab="frequency",ylab="spectral density",type="l",main="Spectral Density: S1 Method TS")
+plot(S2.spy~S2.spx,xlab="frequency",ylab="spectral density",type="l",main="Spectral Density: S2 Method TS")
+
+
+```
+
+
+For the method S1 the spectral density clearly shows a frequency of 1 e.g. 1 year frequency. Although, It seems as S2 method doesn't produce a clear frequency, a possible interpretation is that there's a more complex underlying process that is not accounted for within the data.
+
+
+
+## Task 3
+
+Differencing the times series  
+```{r, echo = T, include = T}
+library(forecast)
+nsdiffs(S1.Method.ts)
+ndiffs(S1.Method.ts)
+nsdiffs(S2.Method.ts)
+ndiffs(S2.Method.ts)
+
+```
+
+
+Since poor results are shown for S2 method, firstly with the incomplete spectral density est. and now with the subsequent 0 differencing required for stationarity we omit the S2 method times series and proceed with solely the S1 time series.
+
+
+```{r, echo = TRUE, include = T}
+TS.diff <- diff(S1.Method.ts, lag = nsdiffs(S1.Method.ts), differences = ndiffs(S1.Method.ts) )
+
+
+```
+
+
+## Task 4
+
+Testing for stationarity using the previous methods in lab 1, on the newly differenced data yields
+
+
+```{r, echo = T, include = t}
+acf(x = TS.diff,
+    type = c("covariance"))
+acf(TS.diff)
+pacf(TS.diff)
+
+```
