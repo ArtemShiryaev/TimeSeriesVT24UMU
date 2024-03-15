@@ -1,0 +1,353 @@
+---
+title: "Time Series Labb 1"
+subtitle: "Time Series Analysis, Umeå University"
+author: "Artem Shiryaev\\
+Group 8"
+date: "`r Sys.Date()`"
+output: beamer_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Problem Forumlation
+
+- Time Series Forecasting 
+- Investment Decision based on Accuracy of Models
+- Exploration of data
+- Model evaluation
+
+
+```{r, echo = F, include = F}
+load("~/University/Education/Mathematics/Avancerade Kurser/VT24 Time Series/Assignments/Labb 1/UMU_Time_Series_VT24/Workspace_labb1.RData")
+load("~/University/Education/Mathematics/Avancerade Kurser/VT24 Time Series/Assignments/Labb 1/UMU_Time_Series_VT24/Workspace_labb2.RData")
+
+```
+## Data Presentation
+```{r, echo = F, include = T}
+par(mfrow=c(1,2))
+plot(formated.data[,1],
+     ylab = "Opening Prices of BTC",
+     main = "Original data"
+)
+
+plot(monthly.data,
+     ylab ="Opening Prices of BTC in USD",
+          main = "Smoothed Monthly data")
+
+
+```
+```{r, echo =F, include =F}
+library(forecast)
+
+```
+
+## Data Presentation
+
+```{r, echo = F, include = T}
+par(mfrow=c(2,2))
+plot(train.data,
+     ylab = "Opening Prices of BTC",
+     xlab = "Years",
+          main = "Split Training data"
+)
+
+plot(test.data,
+     ylab = "Opening Prices of BTC",
+     xlab = "Months in 2023",
+               main = "Split test data"
+)
+
+
+plot(log.train.data,
+     ylab = "log Opening Prices of BTC",
+     xlab = "Years",
+     main = "Log train data"
+)
+
+plot(log.test.data ,
+     ylab = "log Opening Prices of BTC",
+     xlab = "Months in 2023",
+     main = "Log test data"
+)
+```
+
+
+<!-- ## Statistical Methods Applied -->
+
+
+<!-- - S1 Method -->
+
+<!-- \begin{align} -->
+<!-- X_t &= m_t + s_t + Y_t, \:\: t=1,\dots n,\: \text{ where }, \mathbf{E} [Y_t ] = 0\\ -->
+<!-- m_t &= \frac{0.5x_{t-3} + x_{t-2} + x_{t-1} + x_{t} + x_{t+1} + x_{t+2} + 0.5x_{t+3}}{6}\\ -->
+<!-- s_t &= w_k - \frac{1}{d} \Sigma_{i}^{d}w_i \: \:\: \: ,i,k = 1,2,\dots d\\ -->
+<!-- d_t &= x_t - s_t\\ -->
+<!-- &\text{Then re-estimate the means using the de-seasonalized data}\\ -->
+<!-- \hat{m}_t &= \frac{0.5d_{t-3} + d_{t-2} + d_{t-1} + d_{t} + d_{t+1} + d_{t+2} + 0.5d_{t+3}}{6}\\ -->
+<!-- \hat{Y}_t &= x_t - \hat{m}_t - s_t -->
+<!-- \end{align} -->
+
+<!-- ## Statistical Methods Applied -->
+
+
+<!-- - S2 Method -->
+
+<!-- Method S2 consist of elimination of trend and seasonal component by differencing. -->
+
+<!-- The \textbf{lag-d} difference operator $\nabla_d$ is defined as -->
+
+<!-- $$ \nabla_d X_t = X_t - X-{t-d} = (1-\mathcal{B}^d)X_t$$ -->
+<!-- Using special property of  -->
+<!-- $$ \mathcal{B} X_t = X_{t-1} $$ -->
+
+<!-- $$ \nabla_d X_t = m_t - m_{t-d} + Y_t - Y_{t-d} $$ -->
+
+
+
+
+## Statistical Methods Results: S1
+```{r, echo = F, include = T}
+par(mfrow=c(1,2))
+plot(S1.MA.Results,
+     ylab = "Log BTC/USD",
+     main = "S1 Filtered Time Series")
+plot(S1.MA.Filter,
+     ylab = "Log BTC/USD",
+     main = "Unfiltered Time Series")
+
+```
+
+
+<!-- ## Statistical Methods Results: S1 -->
+
+<!-- Seasonal components: -->
+
+<!-- | Months  |    Jan    |  Feb      |   Mar   |  Apr    |  May      |  June     |   July    |  Aug  |   Sept   |   Oct     |  Nov      |    Dec    | -->
+<!-- |----------|-----------|-----------|-----------|----------|-----------|-----------|-----------|---------|----------|-----------|-----------|-----------| -->
+<!-- | $s_t$    |  -0.34    | -0.33     |   -0.41   | -0.18   | -0.14    | -0.17    | -0.25    | -0.31    | -0.39   | -0.43    | -0.45    | -0.51    | -->
+
+
+
+<!-- ## Statistical Methods Results: S1 -->
+<!-- ```{r, echo = F, include = T} -->
+
+<!-- par(mfrow=c(1,2)) -->
+<!-- plot(Xt.ts.data2, -->
+<!--      ylab = "Deseasonablized log Price BTC/USD") -->
+
+<!-- plot(S1.DS.Results, -->
+<!--      ylab = "Filtered Deseasonablized log Price BTC/USD") -->
+
+
+<!-- ``` -->
+
+
+## Statistical Methods Results: S1
+```{r, echo = F, include = T}
+par(mfrow=c(1,2))
+plot(Yhat_t,
+     ylab = "Residuals of Time Series")
+plot(Yhat_ACF,
+     ylab = "ACF",
+     main = "ACF of Residuals ")
+
+
+```
+
+
+## Statistical Methods Results: S2
+```{r, echo = F, include = T, fig.cap= "Differenced Method for de-seasonlized and de-trending Time series"}
+par(mfrow=c(1,2))
+
+plot(S2.trend.diffed,
+     ylab = "Residuals",
+     main = "De-season/trended Time Series")
+plot(acf.trend,
+     main = "ACF on Residuals Dataset")
+
+```
+
+## Checking Assumptions
+
+  - Visually checking the sample autocorrelation function
+  
+\begin{align*}
+\text{H}_0 &= \text{The Time Series is iid Noise}\\
+\text{H}_1 &= \text{The Time Series is } \mathbf{\text{NOT}} \text{ iid Noise}
+\end{align*}
+
+  - Protmanteau test
+  
+  - Turning point test
+  
+  - Difference-sign test
+  
+  - Mann-Kendall Rank test
+  
+  - Augmented Dicker-Fuller test
+  
+  - Checking for normality
+    - Histogram
+    - qq plot
+    - Normality test
+      - Shapiro-Wilks test
+      - Shapiro–Francia test
+      
+      
+      
+## Checking Assumptions
+```{r, echo = F, include = T, fig.cap= "ACF for S1 and S2 methods on time series"}
+par(mfrow=c(1,2))
+
+plot(Yhat_ACF,
+     main = "S1 ACF on Residuals Dataset")
+
+plot(acf.trend,
+     main = "S2 ACF on Residuals Dataset")
+
+
+
+```
+
+
+
+## Checking Assumptions
+```{r, echo = F, include=TRUE, fig.cap= "Q-Q plots for Normality of Residuals of S1 and S2 Method"}
+
+# Normality Plots
+par(mfrow=c(1,2))
+qqnorm(S1.Residuals,
+       main = "S1 Normal Q-Q Plot")
+qqline(S1.Residuals)
+qqnorm(S2.Residuals,
+       main = "S2 Normal Q-Q Plot")
+qqline(S2.Residuals)
+
+```
+
+
+## Spectral Analysis
+```{r, echo = F, include = T, fig.cap= "Spectral Analysis on S1 and S2 data"}
+S1.Method.ts <- as.ts(S1.DS.Results)
+S2.Method.ts <- as.ts(S2.trend.diffed)
+# Calculating the perriodogram
+par(mfrow=c(2,2))
+S1.spc <- spectrum(S1.Method.ts,plot="T", main = "S1 Method - Raw Perriodogram")
+S2.spc <- spectrum(S2.Method.ts,plot="T", main = "S2 Method - Raw Perriodogram")
+#Extracting the frequencies at which the spectral density is estimated
+S1.spx <- S1.spc$freq
+S2.spx <- S2.spc$freq
+#Extracting the spectral density estimates, scaled by 1/frequency
+S1.spy <- S1.spc$spec
+S2.spy <- S2.spc$spec
+
+
+#Plotting the Spectral density
+#par(mfrow=c(1,2))
+plot(S1.spy~S1.spx,xlab="frequency",ylab="spectral density",type="l",main="Spectral Density: S1 Method TS")
+plot(S2.spy~S2.spx,xlab="frequency",ylab="spectral density",type="l",main="Spectral Density: S2 Method TS")
+```
+
+## Fitting ARMA models
+
+ - Check ACF for AR(p), PACF for MA(q)
+ - Evaluate using AIC
+ - Fit model
+ - Residual Diagnostics
+ 
+ 
+## Fitting ARMA models
+```{r, echo = F, include = T}
+# Normality checking
+
+par(mfrow=c(1,2))
+
+# Histogram of rescaled residuals
+Mod2_res_scaled <- Mod2_res/sqrt(Model_2$sigma2)
+hist(Mod2_res_scaled, main="Histogram of Rescaled residuals")
+
+# qq-plot
+qqnorm(Mod2_res_scaled)
+qqline(Mod2_res_scaled)
+```
+
+## Fitting ARMA models
+```{r, echo = F, include = T, fig.cap="Residual checks"}
+par(mfrow=c(1,1))
+
+
+checkresiduals(Mod2_res)
+```
+
+## Forecast of 2023
+
+```{r, echo = F, include = T, fig.cap="Forecast with SARIMA(9,0,1) Model with 95 CI"}
+
+par(mfrow=c(1,2))
+
+plot(forecast_mod3$pred,
+     ylab = "Prediction",
+     ylim = c(7,12),
+     lwd = 2,
+     type = "b")
+lines(UP_CI3, col = "red")
+lines(LOW_CI3,col = "red")
+
+
+
+plot(log.test.data,
+     ylab = "Test data")
+
+```
+
+
+
+## Forecast of 2023
+```{r, echo = F, include = T, fig.cap="Forecast with auto.arima AR(1) Model with 95 CI"}
+
+par(mfrow=c(1,2))
+
+plot(forecast_mod4$pred,
+     ylab = "Prediction",
+     ylim = c(7,12),
+     lwd = 2,
+     type = "b")
+lines(UP_CI4, col = "red")
+lines(LOW_CI4,col = "red")
+
+
+
+plot(log.test.data,
+     ylab = "Test data")
+
+```
+
+
+## Summary
+
+Model | ARMA(1,1) |    ARMA(9,1)    |  SARMA(9,0,1) $\times$ (1,0,1)   |AR(1)|
+------|----------|-----------|-----------|-----------|
+MSE | 1261| 1258 | 10.1 | 3.72 |  
+
+
+## Conclusion
+
+
+- Poor performance, linear time series model is insufficient or poorly specified for using on this kind of data set
+- Stationary assumption and normality assumption violated 
+- Intuitively the assumption of the model that $s_t = s_{t+d}$ may be too strong
+- Poor data handling and processing from my side
+- Challenging to fit a suitable model
+
+
+
+
+
+
+
+## Questions?
+
+
+Thank you for listening.
